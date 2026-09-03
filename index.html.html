@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Joshua Expeditions — Season Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --dark-blue: #2C4B56;
+    --light-blue: #619DB7;
+    --rust: #B5573C;
+    --bg: #F4F6F7;
+    --card-bg: #FFFFFF;
+    --text-dark: #22333B;
+    --text-muted: #667479;
+    --border: #E1E7E9;
+    --green: #2F8F5B;
+    --red: #B5573C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-dark);
+  }
+  header {
+    background: var(--dark-blue);
+    color: white;
+    padding: 28px 36px 22px;
+  }
+  header h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; letter-spacing: 0.3px; }
+  header p { margin: 0; color: #C7DAE1; font-size: 13px; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 28px 36px 60px; }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 30px;
+  }
+  .kpi-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--light-blue);
+    box-shadow: 0 1px 3px rgba(44,75,86,0.06);
+  }
+  .kpi-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .kpi-card .value { font-size: 30px; font-weight: 700; color: var(--dark-blue); margin: 6px 0 2px; }
+  .kpi-card .sub { font-size: 12px; color: var(--text-muted); }
+  .kpi-card .delta { font-size: 13px; font-weight: 700; margin-top: 6px; }
+  .delta.negative { color: var(--rust); }
+  .delta.positive { color: var(--green); }
+
+  .section-title { font-size: 16px; font-weight: 700; color: var(--dark-blue); margin: 34px 0 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title .bar { width: 4px; height: 16px; background: var(--rust); border-radius: 2px; display: inline-block; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .chart-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+  }
+  .chart-card h3 { margin: 0 0 4px; font-size: 14px; color: var(--dark-blue); }
+  .chart-card .chart-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+  .chart-wrap { height: 260px; }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .status-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--light-blue);
+  }
+  .status-card.watchlist { border-left-color: #D9A62E; }
+  .status-card.transition { border-left-color: var(--rust); }
+  .status-card.new { border-left-color: var(--green); }
+  .status-card .count { font-size: 26px; font-weight: 700; color: var(--dark-blue); }
+  .status-card .title { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .status-card .desc { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  thead th {
+    background: var(--dark-blue);
+    color: white;
+    font-size: 12px;
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+  }
+  tbody td { padding: 9px 14px; font-size: 13px; border-top: 1px solid var(--border); }
+  tbody tr:nth-child(even) { background: #F8FAFB; }
+  td.num, th.num { text-align: right; }
+  td.negative { color: var(--rust); font-weight: 600; }
+  td.positive { color: var(--green); font-weight: 600; }
+
+  .footnote { font-size: 11px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Joshua Expeditions — Season Registration Dashboard</h1>
+  <p>Season C — current &nbsp;·&nbsp; Season B — same point one year earlier (9/2/2025) &nbsp;·&nbsp; Data as of 8/31/2026 &nbsp;·&nbsp; KPI totals compare the same calendar week year-over-year, not B's final totals</p>
+</header>
+
+<div class="container">
+
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="footnote" id="kpiFootnote" style="margin-bottom:20px;"></div>
+
+  <div class="section-title"><span class="bar"></span>Registration Trajectory — Week-in-Cycle (B vs C)</div>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>Actual Travelers by Week-in-Cycle</h3>
+      <div class="chart-sub" id="travelersSub">Season B shifted forward one year so the same calendar week overlays — this shows year-over-year pacing, not weeks since each season opened.</div>
+      <div class="chart-wrap"><canvas id="travelersChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Estimated Travelers by Week-in-Cycle</h3>
+      <div class="chart-sub">Season B shifted forward one year so the same calendar week overlays — projected (Paying + Free) registrations at each point.</div>
+      <div class="chart-wrap"><canvas id="estimatedChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-title"><span class="bar"></span>Organization Registration Status</div>
+  <div class="status-grid" id="statusGrid"></div>
+
+  <div class="section-title"><span class="bar"></span>Sales Rep Performance — Season B vs Season C</div>
+  <table id="salesRepTable">
+    <thead>
+      <tr>
+        <th>Sales Rep</th>
+        <th class="num">B Trips</th>
+        <th class="num">B Estimated</th>
+        <th class="num">B Actual</th>
+        <th class="num">C Trips</th>
+        <th class="num">C Estimated</th>
+        <th class="num">C Actual</th>
+        <th class="num">Change (Actual)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <div class="footnote">
+    Sales Rep = books the group and owns the client relationship (not Coordinator, who plans/operates the trip). Group trips only — cancelled trips and Air Only bookings (Dina Sous, Tamzin Mioch) excluded. Jodi Harrison shows zero Season C activity and is auto-detected as a departed rep — her prior accounts appear on the Sales Transition list above.
+  </div>
+
+</div>
+
+<script>
+const DATA = {"generated": "2026-08-31", "comparison_note": "Season B reference = 9/2/2025, the closest B report to exactly one year before Season C's current file (8/31/2026) \u2014 i.e. the same point in the calendar year, not B's final totals.", "kpis": {"group_trips": {"B": 234, "C": 196, "change": -38, "pct": -16.2}, "orgs": {"B": 177, "C": 145, "change": -32, "pct": -18.1}, "estimated_travelers": {"B": 7137, "C": 6574, "change": -563, "pct": -7.9}, "actual_travelers": {"B": 5168, "C": 4528, "change": -640, "pct": -12.4}, "fill_rate": {"B": 72.4, "C": 68.9}}, "reference": {"cancelled": {"B": {"trips": 10, "estimated": 212}, "C": {"trips": 16, "estimated": 472}}, "air_only": {"B": {"trips": 8, "estimated": 302}, "C": {"trips": 13, "estimated": 377}}}, "registration_status": {"returning": {"orgs": 90}, "watchlist": {"orgs": 69, "estimated": 2148}, "sales_transition": {"orgs": 21, "estimated": 744, "departed_rep": "Jodi Harrison"}, "new_orgs": {"orgs": 58, "estimated": 1964}}, "trajectory": {"anchor_date": "2025-03-24", "b_reference_date": "2025-09-02", "B": [{"week_index": 0, "date": "2025-03-24", "actual": 1284.0, "estimated": 2171.0, "trips": 58, "cancelled_cum": 1, "week": 52}, {"week_index": 1, "date": "2025-03-31", "actual": 1381.0, "estimated": 2212.0, "trips": 59, "cancelled_cum": 2, "week": 53}, {"week_index": 2, "date": "2025-04-07", "actual": 1455.0, "estimated": 2339.0, "trips": 65, "cancelled_cum": 2, "week": 54}, {"week_index": 3, "date": "2025-04-14", "actual": 1504.0, "estimated": 2526.0, "trips": 69, "cancelled_cum": 2, "week": 55}, {"week_index": 4, "date": "2025-04-21", "actual": 1548.0, "estimated": 2675.0, "trips": 78, "cancelled_cum": 2, "week": 56}, {"week_index": 5, "date": "2025-04-28", "actual": 1786.0, "estimated": 3048.0, "trips": 88, "cancelled_cum": 2, "week": 57}, {"week_index": 6, "date": "2025-05-05", "actual": 1909.0, "estimated": 3096.0, "trips": 89, "cancelled_cum": 3, "week": 58}, {"week_index": 7, "date": "2025-05-12", "actual": 2053.0, "estimated": 3379.0, "trips": 102, "cancelled_cum": 4, "week": 59}, {"week_index": 8, "date": "2025-05-19", "actual": 2343.0, "estimated": 3950.0, "trips": 114, "cancelled_cum": 5, "week": 60}, {"week_index": 9, "date": "2025-05-26", "actual": 2547.0, "estimated": 4138.0, "trips": 121, "cancelled_cum": 5, "week": 61}, {"week_index": 10, "date": "2025-06-02", "actual": 2823.0, "estimated": 4204.0, "trips": 129, "cancelled_cum": 5, "week": 62}, {"week_index": 11, "date": "2025-06-09", "actual": 2998.0, "estimated": 4674.0, "trips": 140, "cancelled_cum": 5, "week": 63}, {"week_index": 12, "date": "2025-06-16", "actual": 3161.0, "estimated": 4788.0, "trips": 146, "cancelled_cum": 5, "week": 64}, {"week_index": 13, "date": "2025-06-23", "actual": 3342.0, "estimated": 5211.0, "trips": 152, "cancelled_cum": 5, "week": 65}, {"week_index": 14, "date": "2025-06-30", "actual": 3518.0, "estimated": 5451.0, "trips": 159, "cancelled_cum": 5, "week": 66}, {"week_index": 15, "date": "2025-07-07", "actual": 3648.0, "estimated": 5496.0, "trips": 160, "cancelled_cum": 5, "week": 67}, {"week_index": 16, "date": "2025-07-14", "actual": 3839.0, "estimated": 5606.0, "trips": 164, "cancelled_cum": 5, "week": 68}, {"week_index": 17, "date": "2025-07-21", "actual": 3902.0, "estimated": 5721.0, "trips": 168, "cancelled_cum": 5, "week": 69}, {"week_index": 18, "date": "2025-07-28", "actual": 3958.0, "estimated": 5881.0, "trips": 175, "cancelled_cum": 5, "week": 70}, {"week_index": 19, "date": "2025-08-04", "actual": 4026.0, "estimated": 5948.0, "trips": 176, "cancelled_cum": 6, "week": 71}, {"week_index": 20, "date": "2025-08-11", "actual": 4101.0, "estimated": 6167.0, "trips": 186, "cancelled_cum": 6, "week": 72}, {"week_index": 21, "date": "2025-08-18", "actual": 4293.0, "estimated": 6488.0, "trips": 196, "cancelled_cum": 8, "week": 73}, {"week_index": 22, "date": "2025-08-25", "actual": 4586.0, "estimated": 6770.0, "trips": 222, "cancelled_cum": 9, "week": 74}, {"week_index": 23, "date": "2025-09-02", "actual": 5168.0, "estimated": 7137.0, "trips": 234, "cancelled_cum": 10, "week": 75}, {"week_index": 24, "date": "2025-09-08", "actual": 5427.0, "estimated": 7091.0, "trips": 244, "cancelled_cum": 14, "week": 76}, {"week_index": 25, "date": "2025-09-15", "actual": 5653.0, "estimated": 7369.0, "trips": 252, "cancelled_cum": 17, "week": 77}, {"week_index": 26, "date": "2025-09-22", "actual": 6057.0, "estimated": 7558.0, "trips": 260, "cancelled_cum": 22, "week": 78}, {"week_index": 27, "date": "2025-09-29", "actual": 6348.0, "estimated": 7848.0, "trips": 268, "cancelled_cum": 24, "week": 79}, {"week_index": 28, "date": "2025-10-06", "actual": 6754.0, "estimated": 8340.0, "trips": 272, "cancelled_cum": 26, "week": 80}, {"week_index": 29, "date": "2025-10-13", "actual": 7195.0, "estimated": 8349.0, "trips": 274, "cancelled_cum": 28, "week": 81}, {"week_index": 30, "date": "2025-10-20", "actual": 7574.0, "estimated": 8548.0, "trips": 280, "cancelled_cum": 28, "week": 82}, {"week_index": 31, "date": "2025-10-27", "actual": 7874.0, "estimated": 8575.0, "trips": 283, "cancelled_cum": 30, "week": 83}, {"week_index": 32, "date": "2025-11-03", "actual": 8075.0, "estimated": 8819.0, "trips": 289, "cancelled_cum": 34, "week": 84}, {"week_index": 33, "date": "2025-11-10", "actual": 8255.0, "estimated": 8888.0, "trips": 293, "cancelled_cum": 34, "week": 85}, {"week_index": 34, "date": "2025-11-17", "actual": 8462.0, "estimated": 8924.0, "trips": 295, "cancelled_cum": 34, "week": 86}, {"week_index": 35, "date": "2025-11-24", "actual": 8653.0, "estimated": 8973.0, "trips": 298, "cancelled_cum": 34, "week": 87}, {"week_index": 36, "date": "2025-12-01", "actual": 8695.0, "estimated": 8993.0, "trips": 300, "cancelled_cum": 34, "week": 88}, {"week_index": 37, "date": "2025-12-08", "actual": 8747.0, "estimated": 8966.0, "trips": 301, "cancelled_cum": 36, "week": 89}, {"week_index": 38, "date": "2025-12-15", "actual": 8804.0, "estimated": 9036.0, "trips": 302, "cancelled_cum": 36, "week": 90}, {"week_index": 39, "date": "2025-12-22", "actual": 8820.0, "estimated": 9082.0, "trips": 303, "cancelled_cum": 36, "week": 91}, {"week_index": 40, "date": "2025-12-29", "actual": 8821.0, "estimated": 9056.0, "trips": 303, "cancelled_cum": 36, "week": 92}, {"week_index": 41, "date": "2026-01-05", "actual": 8825.0, "estimated": 9056.0, "trips": 304, "cancelled_cum": 36, "week": 93}, {"week_index": 42, "date": "2026-01-12", "actual": 8808.0, "estimated": 9038.0, "trips": 303, "cancelled_cum": 38, "week": 94}, {"week_index": 43, "date": "2026-01-19", "actual": 8843.0, "estimated": 9065.0, "trips": 306, "cancelled_cum": 39, "week": 95}, {"week_index": 44, "date": "2026-01-26", "actual": 8868.0, "estimated": 9081.0, "trips": 306, "cancelled_cum": 39, "week": 96}, {"week_index": 45, "date": "2026-02-02", "actual": 8926.0, "estimated": 9116.0, "trips": 310, "cancelled_cum": 38, "week": 97}, {"week_index": 46, "date": "2026-02-09", "actual": 8965.0, "estimated": 9114.0, "trips": 310, "cancelled_cum": 38, "week": 98}, {"week_index": 47, "date": "2026-02-16", "actual": 8978.0, "estimated": 9092.0, "trips": 309, "cancelled_cum": 39, "week": 99}, {"week_index": 48, "date": "2026-02-23", "actual": 9004.0, "estimated": 9092.0, "trips": 309, "cancelled_cum": 39, "week": 100}, {"week_index": 49, "date": "2026-03-02", "actual": 9003.0, "estimated": 9048.0, "trips": 308, "cancelled_cum": 40, "week": 101}, {"week_index": 50, "date": "2026-03-09", "actual": 8990.0, "estimated": 9005.0, "trips": 307, "cancelled_cum": 41, "week": 102}, {"week_index": 51, "date": "2026-03-16", "actual": 8982.0, "estimated": 9003.0, "trips": 307, "cancelled_cum": 41, "week": 103}, {"week_index": 52, "date": "2026-03-23", "actual": 8980.0, "estimated": 9019.0, "trips": 308, "cancelled_cum": 41, "week": 104}, {"week_index": 53, "date": "2026-03-30", "actual": 8980.0, "estimated": 9019.0, "trips": 308, "cancelled_cum": 41, "week": 105}, {"week_index": 54, "date": "2026-04-06", "actual": 8984.0, "estimated": 9019.0, "trips": 308, "cancelled_cum": 41, "week": 106}, {"week_index": 55, "date": "2026-05-11", "actual": 9002.0, "estimated": 9030.0, "trips": 309, "cancelled_cum": 41, "week": 111}, {"week_index": 56, "date": "2026-05-18", "actual": 8984.0, "estimated": 9013.0, "trips": 308, "cancelled_cum": 42, "week": 112}, {"week_index": 57, "date": "2026-05-26", "actual": 8982.0, "estimated": 9013.0, "trips": 309, "cancelled_cum": 42, "week": 113}, {"week_index": 58, "date": "2026-06-01", "actual": 8990.0, "estimated": 9013.0, "trips": 309, "cancelled_cum": 42, "week": 114}, {"week_index": 59, "date": "2026-06-08", "actual": 8986.0, "estimated": 9019.0, "trips": 310, "cancelled_cum": 42, "week": 115}, {"week_index": 60, "date": "2026-06-15", "actual": 8998.0, "estimated": 9017.0, "trips": 310, "cancelled_cum": 42, "week": 116}, {"week_index": 61, "date": "2026-06-22", "actual": 9015.0, "estimated": 9017.0, "trips": 310, "cancelled_cum": 42, "week": 117}, {"week_index": 62, "date": "2026-06-29", "actual": 9016.0, "estimated": 9017.0, "trips": 310, "cancelled_cum": 42, "week": 118}, {"week_index": 63, "date": "2026-07-14", "actual": 9024.0, "estimated": 9017.0, "trips": 310, "cancelled_cum": 42, "week": 120}, {"week_index": 64, "date": "2026-07-20", "actual": 9024.0, "estimated": 9017.0, "trips": 310, "cancelled_cum": 42, "week": 121}, {"week_index": 65, "date": "2026-07-27", "actual": 9025.0, "estimated": 9017.0, "trips": 310, "cancelled_cum": 42, "week": 122}], "C": [{"week_index": 0, "date": "2025-03-24", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 0}, {"week_index": 1, "date": "2025-03-31", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 1}, {"week_index": 2, "date": "2025-04-07", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 2}, {"week_index": 3, "date": "2025-04-14", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 3}, {"week_index": 4, "date": "2025-04-21", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 4}, {"week_index": 5, "date": "2025-04-28", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 5}, {"week_index": 6, "date": "2025-05-05", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 6}, {"week_index": 7, "date": "2025-05-12", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 7}, {"week_index": 8, "date": "2025-05-19", "actual": 3.0, "estimated": 18.0, "trips": 1, "cancelled_cum": 0, "week": 8}, {"week_index": 9, "date": "2025-05-26", "actual": 6.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 9}, {"week_index": 10, "date": "2025-06-02", "actual": 6.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 10}, {"week_index": 11, "date": "2025-06-09", "actual": 9.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 11}, {"week_index": 12, "date": "2025-06-16", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 12}, {"week_index": 13, "date": "2025-06-23", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 13}, {"week_index": 14, "date": "2025-06-30", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 14}, {"week_index": 15, "date": "2025-07-07", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 15}, {"week_index": 16, "date": "2025-07-14", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 16}, {"week_index": 17, "date": "2025-07-21", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 17}, {"week_index": 18, "date": "2025-07-28", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 18}, {"week_index": 19, "date": "2025-08-04", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 19}, {"week_index": 20, "date": "2025-08-11", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 20}, {"week_index": 21, "date": "2025-08-18", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 21}, {"week_index": 22, "date": "2025-08-25", "actual": 13.0, "estimated": 38.0, "trips": 2, "cancelled_cum": 0, "week": 22}, {"week_index": 23, "date": "2025-09-02", "actual": 13.0, "estimated": 38.0, "trips": 3, "cancelled_cum": 0, "week": 23}, {"week_index": 24, "date": "2025-09-08", "actual": 15.0, "estimated": 74.0, "trips": 5, "cancelled_cum": 0, "week": 24}, {"week_index": 25, "date": "2025-09-15", "actual": 21.0, "estimated": 122.0, "trips": 5, "cancelled_cum": 0, "week": 25}, {"week_index": 26, "date": "2025-09-22", "actual": 41.0, "estimated": 122.0, "trips": 5, "cancelled_cum": 0, "week": 26}, {"week_index": 27, "date": "2025-10-06", "actual": 44.0, "estimated": 276.0, "trips": 9, "cancelled_cum": 0, "week": 28}, {"week_index": 28, "date": "2025-10-13", "actual": 58.0, "estimated": 278.0, "trips": 9, "cancelled_cum": 0, "week": 29}, {"week_index": 29, "date": "2025-10-20", "actual": 86.0, "estimated": 321.0, "trips": 11, "cancelled_cum": 0, "week": 30}, {"week_index": 30, "date": "2025-10-27", "actual": 100.0, "estimated": 474.0, "trips": 14, "cancelled_cum": 0, "week": 31}, {"week_index": 31, "date": "2025-11-03", "actual": 148.0, "estimated": 461.0, "trips": 15, "cancelled_cum": 0, "week": 32}, {"week_index": 32, "date": "2025-11-10", "actual": 158.0, "estimated": 461.0, "trips": 15, "cancelled_cum": 0, "week": 33}, {"week_index": 33, "date": "2025-11-17", "actual": 180.0, "estimated": 555.0, "trips": 16, "cancelled_cum": 0, "week": 34}, {"week_index": 34, "date": "2025-11-24", "actual": 182.0, "estimated": 575.0, "trips": 17, "cancelled_cum": 0, "week": 35}, {"week_index": 35, "date": "2025-12-01", "actual": 217.0, "estimated": 575.0, "trips": 17, "cancelled_cum": 0, "week": 36}, {"week_index": 36, "date": "2025-12-08", "actual": 234.0, "estimated": 565.0, "trips": 18, "cancelled_cum": 0, "week": 37}, {"week_index": 37, "date": "2025-12-15", "actual": 244.0, "estimated": 565.0, "trips": 20, "cancelled_cum": 0, "week": 38}, {"week_index": 38, "date": "2025-12-22", "actual": 258.0, "estimated": 709.0, "trips": 20, "cancelled_cum": 0, "week": 39}, {"week_index": 39, "date": "2025-12-29", "actual": 269.0, "estimated": 709.0, "trips": 20, "cancelled_cum": 0, "week": 40}, {"week_index": 40, "date": "2026-01-05", "actual": 274.0, "estimated": 729.0, "trips": 21, "cancelled_cum": 0, "week": 41}, {"week_index": 41, "date": "2026-01-12", "actual": 347.0, "estimated": 729.0, "trips": 21, "cancelled_cum": 0, "week": 42}, {"week_index": 42, "date": "2026-01-19", "actual": 365.0, "estimated": 729.0, "trips": 22, "cancelled_cum": 0, "week": 43}, {"week_index": 43, "date": "2026-01-26", "actual": 394.0, "estimated": 796.0, "trips": 23, "cancelled_cum": 0, "week": 44}, {"week_index": 44, "date": "2026-02-02", "actual": 433.0, "estimated": 899.0, "trips": 25, "cancelled_cum": 0, "week": 45}, {"week_index": 45, "date": "2026-02-09", "actual": 544.0, "estimated": 939.0, "trips": 26, "cancelled_cum": 0, "week": 46}, {"week_index": 46, "date": "2026-02-16", "actual": 593.0, "estimated": 1005.0, "trips": 30, "cancelled_cum": 0, "week": 47}, {"week_index": 47, "date": "2026-02-23", "actual": 633.0, "estimated": 1194.0, "trips": 34, "cancelled_cum": 0, "week": 48}, {"week_index": 48, "date": "2026-03-02", "actual": 762.0, "estimated": 1347.0, "trips": 42, "cancelled_cum": 0, "week": 49}, {"week_index": 49, "date": "2026-03-09", "actual": 854.0, "estimated": 1397.0, "trips": 42, "cancelled_cum": 0, "week": 50}, {"week_index": 50, "date": "2026-03-16", "actual": 905.0, "estimated": 1515.0, "trips": 46, "cancelled_cum": 1, "week": 51}, {"week_index": 51, "date": "2026-03-23", "actual": 950.0, "estimated": 1894.0, "trips": 55, "cancelled_cum": 1, "week": 52}, {"week_index": 52, "date": "2026-03-30", "actual": 998.0, "estimated": 1960.0, "trips": 58, "cancelled_cum": 2, "week": 53}, {"week_index": 53, "date": "2026-04-06", "actual": 1093.0, "estimated": 2109.0, "trips": 62, "cancelled_cum": 2, "week": 54}, {"week_index": 54, "date": "2026-04-13", "actual": 1224.0, "estimated": 2178.0, "trips": 67, "cancelled_cum": 2, "week": 55}, {"week_index": 55, "date": "2026-05-18", "actual": 2156.0, "estimated": 3797.0, "trips": 116, "cancelled_cum": 8, "week": 60}, {"week_index": 56, "date": "2026-05-26", "actual": 2548.0, "estimated": 4382.0, "trips": 128, "cancelled_cum": 10, "week": 61}, {"week_index": 57, "date": "2026-06-01", "actual": 2773.0, "estimated": 4433.0, "trips": 135, "cancelled_cum": 10, "week": 62}, {"week_index": 58, "date": "2026-06-08", "actual": 3064.0, "estimated": 4594.0, "trips": 137, "cancelled_cum": 11, "week": 63}, {"week_index": 59, "date": "2026-06-15", "actual": 3204.0, "estimated": 4736.0, "trips": 141, "cancelled_cum": 11, "week": 64}, {"week_index": 60, "date": "2026-06-22", "actual": 3294.0, "estimated": 4928.0, "trips": 148, "cancelled_cum": 11, "week": 65}, {"week_index": 61, "date": "2026-06-29", "actual": 3431.0, "estimated": 5097.0, "trips": 150, "cancelled_cum": 11, "week": 66}, {"week_index": 62, "date": "2026-07-06", "actual": 3603.0, "estimated": 5107.0, "trips": 152, "cancelled_cum": 11, "week": 67}, {"week_index": 63, "date": "2026-07-14", "actual": 3687.0, "estimated": 5214.0, "trips": 156, "cancelled_cum": 11, "week": 68}, {"week_index": 64, "date": "2026-07-20", "actual": 3691.0, "estimated": 5275.0, "trips": 160, "cancelled_cum": 12, "week": 69}, {"week_index": 65, "date": "2026-07-27", "actual": 3736.0, "estimated": 5685.0, "trips": 167, "cancelled_cum": 12, "week": 70}, {"week_index": 66, "date": "2026-08-03", "actual": 3860.0, "estimated": 5694.0, "trips": 166, "cancelled_cum": 14, "week": 71}, {"week_index": 67, "date": "2026-08-10", "actual": 3963.0, "estimated": 5821.0, "trips": 169, "cancelled_cum": 15, "week": 72}, {"week_index": 68, "date": "2026-08-17", "actual": 4048.0, "estimated": 6088.0, "trips": 174, "cancelled_cum": 15, "week": 73}, {"week_index": 69, "date": "2026-08-24", "actual": 4229.0, "estimated": 6346.0, "trips": 190, "cancelled_cum": 15, "week": 74}, {"week_index": 70, "date": "2026-08-31", "actual": 4528.0, "estimated": 6574.0, "trips": 196, "cancelled_cum": 16, "week": 75}]}, "sales_reps": [{"Sales Rep": "Molly Van Dyke", "Season B Trips": 54, "Season B Estimated": 2185, "Season B Actual": 1902, "Season C Trips": 41, "Season C Estimated": 1835, "Season C Actual": 1486, "Change (Actual)": -416}, {"Sales Rep": "Jodi Harrison", "Season B Trips": 51, "Season B Estimated": 1826, "Season B Actual": 1223, "Season C Trips": 0, "Season C Estimated": 0, "Season C Actual": 0, "Change (Actual)": -1223}, {"Sales Rep": "Julie Woodward", "Season B Trips": 81, "Season B Estimated": 1693, "Season B Actual": 1006, "Season C Trips": 61, "Season C Estimated": 1656, "Season C Actual": 1110, "Change (Actual)": 104}, {"Sales Rep": "Trent Brostrom", "Season B Trips": 43, "Season B Estimated": 1324, "Season B Actual": 940, "Season C Trips": 61, "Season C Estimated": 1919, "Season C Actual": 1270, "Change (Actual)": 330}, {"Sales Rep": "Scott Forsythe", "Season B Trips": 2, "Season B Estimated": 61, "Season B Actual": 51, "Season C Trips": 1, "Season C Estimated": 27, "Season C Actual": 27, "Change (Actual)": -24}, {"Sales Rep": "Natalie Alvord", "Season B Trips": 2, "Season B Estimated": 34, "Season B Actual": 30, "Season C Trips": 0, "Season C Estimated": 0, "Season C Actual": 0, "Change (Actual)": -30}, {"Sales Rep": "Beth Andersen", "Season B Trips": 1, "Season B Estimated": 14, "Season B Actual": 16, "Season C Trips": 0, "Season C Estimated": 0, "Season C Actual": 0, "Change (Actual)": -16}, {"Sales Rep": "Hayley Stockton", "Season B Trips": 0, "Season B Estimated": 0, "Season B Actual": 0, "Season C Trips": 1, "Season C Estimated": 250, "Season C Actual": 0, "Change (Actual)": 0}, {"Sales Rep": "Mary Carl Finkelstein", "Season B Trips": 0, "Season B Estimated": 0, "Season B Actual": 0, "Season C Trips": 1, "Season C Estimated": 40, "Season C Actual": 0, "Change (Actual)": 0}, {"Sales Rep": "Shelley Mott", "Season B Trips": 0, "Season B Estimated": 0, "Season B Actual": 0, "Season C Trips": 29, "Season C Estimated": 810, "Season C Actual": 600, "Change (Actual)": 600}, {"Sales Rep": "Zac Wetegrove", "Season B Trips": 0, "Season B Estimated": 0, "Season B Actual": 0, "Season C Trips": 1, "Season C Estimated": 37, "Season C Actual": 35, "Change (Actual)": 35}]};
+
+// ---------- KPI footnote ----------
+document.getElementById("kpiFootnote").textContent = DATA.comparison_note || "";
+
+// ---------- KPI cards ----------
+const kpiDefs = [
+  { key: "group_trips", label: "Group Trips Booked", fmt: v => v.toLocaleString() },
+  { key: "estimated_travelers", label: "Estimated Travelers", fmt: v => v.toLocaleString() },
+  { key: "actual_travelers", label: "Actual Travelers", fmt: v => v.toLocaleString() },
+  { key: "fill_rate", label: "Fill Rate (Actual / Estimated)", fmt: v => v.toFixed(1) + "%" },
+];
+const kpiGrid = document.getElementById("kpiGrid");
+kpiDefs.forEach(def => {
+  const d = DATA.kpis[def.key];
+  const card = document.createElement("div");
+  card.className = "kpi-card";
+  let deltaHtml = "";
+  if (def.key !== "fill_rate") {
+    const cls = d.change < 0 ? "negative" : "positive";
+    const sign = d.change > 0 ? "+" : "";
+    deltaHtml = `<div class="delta ${cls}">${sign}${d.change.toLocaleString()} (${sign}${d.pct}%) vs Season B</div>`;
+  } else {
+    const diff = (d.C - d.B).toFixed(1);
+    const cls = diff < 0 ? "negative" : "positive";
+    const sign = diff > 0 ? "+" : "";
+    deltaHtml = `<div class="delta ${cls}">${sign}${diff} pts vs Season B</div>`;
+  }
+  card.innerHTML = `
+    <div class="label">${def.label}</div>
+    <div class="value">${def.fmt(d.C)}</div>
+    <div class="sub">Season B: ${def.fmt(d.B)}</div>
+    ${deltaHtml}
+  `;
+  kpiGrid.appendChild(card);
+});
+
+// ---------- Trajectory charts ----------
+const brandDarkBlue = "#2C4B56";
+const brandLightBlue = "#619DB7";
+const brandRust = "#B5573C";
+
+// Shared-anchor alignment: week 0 = the EARLIER of the two seasons' first
+// tracked week (individual trips sign up at inconsistent times, so there's
+// no guaranteed common start — see DATA.trajectory.anchor_date). A season
+// that started later simply has no points before its own true start, which
+// shows up here as a gap at the left of its line rather than both lines
+// being forced to start together.
+const maxWeek = Math.max(
+  DATA.trajectory.B[DATA.trajectory.B.length - 1].week,
+  DATA.trajectory.C[DATA.trajectory.C.length - 1].week
+);
+const labels = Array.from({length: maxWeek + 1}, (_, i) => "Wk " + i);
+
+function toSparseSeries(records, field) {
+  const arr = new Array(maxWeek + 1).fill(null);
+  records.forEach(r => { arr[r.week] = r[field]; });
+  return arr;
+}
+
+new Chart(document.getElementById("travelersChart"), {
+  type: "line",
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: "Season B — Actual Travelers",
+        data: toSparseSeries(DATA.trajectory.B, "actual"),
+        borderColor: brandDarkBlue,
+        backgroundColor: brandDarkBlue,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.15,
+        spanGaps: true,
+      },
+      {
+        label: "Season C — Actual Travelers",
+        data: toSparseSeries(DATA.trajectory.C, "actual"),
+        borderColor: brandLightBlue,
+        backgroundColor: brandLightBlue,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.15,
+        spanGaps: true,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { display: false } },
+      y: { title: { display: true, text: "Actual Travelers" }, grid: { color: "#EEF2F3" } },
+    },
+  },
+});
+
+new Chart(document.getElementById("estimatedChart"), {
+  type: "line",
+  data: {
+    labels: labels,
+    datasets: [
+      {
+        label: "Season B — Estimated Travelers",
+        data: toSparseSeries(DATA.trajectory.B, "estimated"),
+        borderColor: brandDarkBlue,
+        backgroundColor: brandDarkBlue,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.15,
+        spanGaps: true,
+      },
+      {
+        label: "Season C — Estimated Travelers",
+        data: toSparseSeries(DATA.trajectory.C, "estimated"),
+        borderColor: brandRust,
+        backgroundColor: brandRust,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.15,
+        spanGaps: true,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { display: false } },
+      y: { title: { display: true, text: "Estimated Travelers" }, grid: { color: "#EEF2F3" } },
+    },
+  },
+});
+
+// ---------- Org status grid ----------
+const rs = DATA.registration_status;
+const statusGrid = document.getElementById("statusGrid");
+statusGrid.innerHTML = `
+  <div class="status-card returning">
+    <div class="count">${rs.returning.orgs}</div>
+    <div class="title">Returning Orgs</div>
+    <div class="desc">Registered in both Season B and Season C — confirmed repeat business.</div>
+  </div>
+  <div class="status-card watchlist">
+    <div class="count">${rs.watchlist.orgs}</div>
+    <div class="title">Priority Watchlist</div>
+    <div class="desc">Not yet re-registered; sales rep still active. ${rs.watchlist.estimated.toLocaleString()} estimated travelers from Season B. Call these first.</div>
+  </div>
+  <div class="status-card transition">
+    <div class="count">${rs.sales_transition.orgs}</div>
+    <div class="title">Sales Transition</div>
+    <div class="desc">Not yet re-registered; rep departed (${rs.sales_transition.departed_rep}). ${rs.sales_transition.estimated.toLocaleString()} estimated travelers. Confirm new owner before contacting.</div>
+  </div>
+  <div class="status-card new">
+    <div class="count">${rs.new_orgs.orgs}</div>
+    <div class="title">New Orgs in Season C</div>
+    <div class="desc">Not in Season B at all — net-new business. ${rs.new_orgs.estimated.toLocaleString()} estimated travelers.</div>
+  </div>
+`;
+
+// ---------- Sales rep table ----------
+const tbody = document.querySelector("#salesRepTable tbody");
+DATA.sales_reps
+  .slice()
+  .sort((a, b) => b["Season C Actual"] - a["Season C Actual"])
+  .forEach(r => {
+    const change = r["Change (Actual)"];
+    const cls = change < 0 ? "negative" : (change > 0 ? "positive" : "");
+    const sign = change > 0 ? "+" : "";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r["Sales Rep"]}</td>
+      <td class="num">${r["Season B Trips"]}</td>
+      <td class="num">${r["Season B Estimated"].toLocaleString()}</td>
+      <td class="num">${r["Season B Actual"].toLocaleString()}</td>
+      <td class="num">${r["Season C Trips"]}</td>
+      <td class="num">${r["Season C Estimated"].toLocaleString()}</td>
+      <td class="num">${r["Season C Actual"].toLocaleString()}</td>
+      <td class="num ${cls}">${sign}${change.toLocaleString()}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+</script>
+
+</body>
+</html>
